@@ -10,8 +10,16 @@ workDir = 'c:\work\windpropeller'
 
 def alignImages(pictureNumber, im1, im2):
     # Convert images to grayscale
-    im1Gray = cv2.cvtColor(im1, cv2.COLOR_BGR2GRAY)
-    im2Gray = cv2.cvtColor(im2, cv2.COLOR_BGR2GRAY)
+    # im1Gray = cv2.cvtColor(im1, cv2.COLOR_BGR2GRAY)
+    # im2Gray = cv2.cvtColor(im2, cv2.COLOR_BGR2GRAY)
+    im1 = cv2.cvtColor(im1, cv2.COLOR_BGR2HSV)
+    im2 = cv2.cvtColor(im2, cv2.COLOR_BGR2HSV)
+
+    # not bad
+    # im1[:, :, 0] = 0
+    # im1[:, :, 2] = 0
+    # im2[:, :, 0] = 0
+    # im2[:, :, 2] = 0
 
     # Detect ORB features and compute descriptors.
     orb = cv2.ORB_create(MAX_FEATURES)
@@ -19,14 +27,17 @@ def alignImages(pictureNumber, im1, im2):
     keypoints2, descriptors2 = orb.detectAndCompute(im2, None)
 
     # Match features.
-    matcher = cv2.DescriptorMatcher_create(cv2.DESCRIPTOR_MATCHER_BRUTEFORCE_HAMMING)
-    matches = matcher.match(descriptors1, descriptors2, None)
+    bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+    matches = bf.match(descriptors1, descriptors2)
+    # matcher = cv2.DescriptorMatcher_create(cv2.DESCRIPTOR_MATCHER_BRUTEFORCE_HAMMING)
+    # matches = matcher.match(descriptors1, descriptors2, None)
 
     # Sort matches by score
     matches.sort(key=lambda x: x.distance, reverse=False)
 
     # Remove not so good matches
-    numGoodMatches = int(len(matches) * GOOD_MATCH_PERCENT)
+    # numGoodMatches = int(len(matches) * GOOD_MATCH_PERCENT)
+    numGoodMatches =5
     matches = matches[:numGoodMatches]
 
     # Draw top matches
@@ -42,7 +53,8 @@ def alignImages(pictureNumber, im1, im2):
         points2[i, :] = keypoints2[match.trainIdx].pt
 
     # Find homography
-    h, mask = cv2.findHomography(points1, points2, cv2.RANSAC)
+    # h, mask = cv2.findHomography(points1, points2, cv2.RANSAC)
+    # cv2.findHomography(points1, points2, cv2.RANSAC)
 
     # Use homography
     height, width, channels = im2.shape
@@ -80,7 +92,8 @@ if __name__ == '__main__':
     print("Aligning images ...")
     # Registered image will be resotred in imReg.
     # The estimated homography will be stored in h.
-    imReg, h = alignImages(im, imReference)
+    # imReg, h = alignImages(97, im, imReference)
+    alignImages(97, im, imReference)
 
     # Write aligned image to disk.
     outFilename = workDir + "/aligned.jpg"
@@ -88,4 +101,4 @@ if __name__ == '__main__':
     # cv2.imwrite(outFilename, imReg)
 
     # Print estimated homography
-    print("Estimated homography : \n", h)
+    # print("Estimated homography : \n", h)
