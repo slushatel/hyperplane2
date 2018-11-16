@@ -717,6 +717,7 @@ class Camera:
             return e2p(distorted_image_coords)
         if world.shape[0] == 3:
             world = e2p(world)
+        # camera_coords = self.R.dot(self.t.dot(world))
         camera_coords = np.hstack((self.R, self.t)).dot(world)
         if self.calibration_type == 'bouguet':
             xy = camera_coords[0:2, :]

@@ -5,8 +5,11 @@ import numpy as np
 import math
 from mpl_toolkits.mplot3d import axes3d
 import matplotlib.pyplot as plt
+from matplotlib import colors as mcolors
+import cv2
 
 
+colors = dict(mcolors.BASE_COLORS, **mcolors.CSS4_COLORS)
 
 
 def set_axes_equal(ax):
@@ -54,39 +57,63 @@ def rotation_matrix(axis, theta):
                      [2 * (bd + ac), 2 * (cd - ab), aa + dd - bb - cc]])
 
 
-axis = [0, 0, 1]
-theta = math.pi
+axis = [1, 0, 0]
+theta = math.pi * 7 / 8
+
+
+def plot_plane(ax, point, normal, color):
+    x = np.linspace(point[0] - 20, point[0] + 20, 10)
+    y = np.linspace(point[1] - 20, point[1] + 20, 10)
+
+    X, Y = np.meshgrid(x, y)
+    Z = - (normal[0] * (X - point[0]) + normal[1] * (Y - point[1])) / normal[2] + point[2]
+    ax.plot_surface(X, Y, Z, alpha=0.2, color=color)
+
 
 # print(np.dot(rotation_matrix(axis, theta), v))
 ######################################
 
 c = camera.Camera()
-c.set_K_elements(200, 200)
+c.set_K_elements(0, 0)
 R = np.array(
     [[1, 0, 0],
      [0, 1, 0],
      [0, 0, 1]])
 
-R = np.dot(rotation_matrix(axis, theta), R)
+# R = np.dot(rotation_matrix(axis, theta), R)
 
 for i in range(0, 3):
     len1 = sqrt(pow(R[0, i], 2) + pow(R[1, i], 2) + pow(R[2, i], 2))
-    print(len1)
+    print("The length of all rotation vectors: " + str(len1))
 
-R *= 10
-c.set_R(R)
-translation = np.array([[0], [0], [50]])
-c.set_t(translation)
+# c.set_R(R)
+c.set_R_euler_angles([math.pi / 8, 0, math.pi / 4])
+R = c.R
+cameraPosition = np.array([[0], [0], [50]])
+translationMatrix = -R.dot(cameraPosition)
+c.set_t(translationMatrix)
+
+print("camera center: " + str(-R.transpose().dot(translationMatrix)))
 
 point = c.world_to_image(np.array([[0., 0., 0.]]).T)
-print(point)
+print("point's image coordinates: " + str(point))
 
-# c.plot_world_points(point, 'ro')
-
+# camera point from opencv
+imagePoints = []
+imagePoints = cv2.projectPoints(np.array([[0., 0., 0.]]), R, translationMatrix, c.K, np.array([]))
+print("point's image coordinates (using projectPoints): " + str(imagePoints))
 
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 ax.set_aspect('equal')
+
+#  world coordinates
+pw = c.image_to_world(point, 1)
+print("image to world coordinates (z = 0):" + str(pw))
+ax.scatter(pw[0], pw[1], pw[2], color='green')
+
+# c.plot_world_points(point, 'ro')
+
 
 x, y, z = [], [], []
 
@@ -95,16 +122,28 @@ x.append(0)
 y.append(0)
 z.append(0)
 
-x.append(translation[0, 0])
-y.append(translation[1, 0])
-z.append(translation[2, 0])
+x.append(cameraPosition[0, 0])
+y.append(cameraPosition[1, 0])
+z.append(cameraPosition[2, 0])
 
-ax.quiver(translation[0, 0], translation[1, 0], translation[2, 0],
-          R[0, 0], R[1, 0], R[2, 0], color=(0.5, 1, 0))  # green
-ax.quiver(translation[0, 0], translation[1, 0], translation[2, 0],
-          R[0, 1], R[1, 1], R[2, 1], color=(1, 0, 0.5))  # red
-ax.quiver(translation[0, 0], translation[1, 0], translation[2, 0],
-          R[0, 2], R[1, 2], R[2, 2], color=(0.5, 0, 1))  # violet
+R *= 10
+
+# ax.quiver(cameraPosition[0, 0], cameraPosition[1, 0], cameraPosition[2, 0],
+#           R[0, 0], R[1, 0], R[2, 0], color=(0.5, 1, 0))  # green
+# ax.quiver(cameraPosition[0, 0], cameraPosition[1, 0], cameraPosition[2, 0],
+#           R[0, 1], R[1, 1], R[2, 1], color=(1, 0, 0.5))  # red
+# ax.quiver(cameraPosition[0, 0], cameraPosition[1, 0], cameraPosition[2, 0],
+#           R[0, 2], R[1, 2], R[2, 2], color=(0.5, 0, 1))  # violet
+
+ax.quiver(cameraPosition[0, 0], cameraPosition[1, 0], cameraPosition[2, 0],
+          R[0, 0], R[0, 1], R[0, 2], color=(0.5, 1, 0))  # green
+ax.quiver(cameraPosition[0, 0], cameraPosition[1, 0], cameraPosition[2, 0],
+          R[1, 0], R[1, 1], R[1, 2], color=(1, 0, 0.5))  # red
+ax.quiver(cameraPosition[0, 0], cameraPosition[1, 0], cameraPosition[2, 0],
+          R[2, 0], R[2, 1], R[2, 2], color=(0.5, 0, 1))  # violet
+
+plot_plane(ax, cameraPosition, R[0], colors['green'])
+plot_plane(ax, cameraPosition, R[1], colors['blue'])
 
 # ax.quiver(matrix[0, 3], matrix[1, 3], matrix[2, 3], matrix[0, 0], matrix[0, 1], matrix[0, 2])
 # ax.quiver(matrix[0, 3], matrix[1, 3], matrix[2, 3], matrix[1, 0], matrix[1, 1], matrix[1, 2])

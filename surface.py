@@ -44,23 +44,44 @@ ax.set_aspect('equal')
 
 x, y, z = [], [], []
 
-# for i in range(1, len(table)):
-for i in range(1, 5):
+for i in range(1, len(table)):
+# for i in range(1, 6):
     print(table[i][0])
     matrix_str = table[i][1]
     matrix = np.matrix(matrix_str).reshape(-1, 4)
     print(matrix)
+    R = matrix.transpose()[0:3].transpose()
+    T = matrix.transpose()[3:4].transpose()
+    cameraPosition = -R.transpose().dot(T)
+
+
     x.append(matrix[0, 3])
     y.append(matrix[1, 3])
     z.append(matrix[2, 3])
 
-    ax.quiver(matrix[0, 3], matrix[1, 3], matrix[2, 3], matrix[0, 0], matrix[0, 1], matrix[0, 2])
-    ax.quiver(matrix[0, 3], matrix[1, 3], matrix[2, 3], matrix[1, 0], matrix[1, 1], matrix[1, 2])
-    ax.quiver(matrix[0, 3], matrix[1, 3], matrix[2, 3], matrix[2, 0], matrix[2, 1], matrix[2, 2])
+    ax.quiver(cameraPosition[0], cameraPosition[1], cameraPosition[2], matrix[0, 0], matrix[0, 1], matrix[0, 2])
+    ax.quiver(cameraPosition[0], cameraPosition[1], cameraPosition[2], matrix[1, 0], matrix[1, 1], matrix[1, 2])
+    ax.quiver(cameraPosition[0], cameraPosition[1], cameraPosition[2], matrix[2, 0], matrix[2, 1], matrix[2, 2])
 
-    ax.quiver(matrix[0, 3], matrix[1, 3], matrix[2, 3], matrix[0, 0], matrix[1, 0], matrix[2, 0], color=(0.5, 1, 0)) #green
-    ax.quiver(matrix[0, 3], matrix[1, 3], matrix[2, 3], matrix[0, 1], matrix[1, 1], matrix[2, 1], color=(1, 0, 0.5)) #red
-    ax.quiver(matrix[0, 3], matrix[1, 3], matrix[2, 3], matrix[0, 2], matrix[1, 2], matrix[2, 2], color=(0.5, 0, 1)) #violet
+    ax.quiver(cameraPosition[0], cameraPosition[1], cameraPosition[2], matrix[0, 0], matrix[1, 0], matrix[2, 0],
+              color=(0.5, 1, 0))  # green
+    ax.quiver(cameraPosition[0], cameraPosition[1], cameraPosition[2], matrix[0, 1], matrix[1, 1], matrix[2, 1],
+              color=(1, 0, 0.5))  # red
+    ax.quiver(cameraPosition[0], cameraPosition[1], cameraPosition[2], matrix[0, 2], matrix[1, 2], matrix[2, 2],
+              color=(0.5, 0, 1))  # violet
+
+    # coordinates from translation column (not right way)
+    # ax.quiver(matrix[0, 3], matrix[1, 3], matrix[2, 3], matrix[0, 0], matrix[0, 1], matrix[0, 2])
+    # ax.quiver(matrix[0, 3], matrix[1, 3], matrix[2, 3], matrix[1, 0], matrix[1, 1], matrix[1, 2])
+    # ax.quiver(matrix[0, 3], matrix[1, 3], matrix[2, 3], matrix[2, 0], matrix[2, 1], matrix[2, 2])
+    #
+    # ax.quiver(matrix[0, 3], matrix[1, 3], matrix[2, 3], matrix[0, 0], matrix[1, 0], matrix[2, 0],
+    #           color=(0.5, 1, 0))  # green
+    # ax.quiver(matrix[0, 3], matrix[1, 3], matrix[2, 3], matrix[0, 1], matrix[1, 1], matrix[2, 1],
+    #           color=(1, 0, 0.5))  # red
+    # ax.quiver(matrix[0, 3], matrix[1, 3], matrix[2, 3], matrix[0, 2], matrix[1, 2], matrix[2, 2],
+    #           color=(0.5, 0, 1))  # violet
+
 
 # x = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 # y = [5, 6, 2, 3, 13, 4, 1, 2, 4, 8]
