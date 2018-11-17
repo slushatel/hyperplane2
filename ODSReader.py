@@ -14,6 +14,7 @@
 
 # Thanks to grt for the fixes
 
+# odfpy
 import odf.opendocument
 from odf.table import Table, TableRow, TableCell
 from odf.text import P

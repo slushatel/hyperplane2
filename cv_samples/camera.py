@@ -295,7 +295,7 @@ class Camera:
         :param a: pixel aspect ratio
         :type a: double
         """
-        self.K = np.array([[f, -f * 1 / math.tan(theta_rad), u0_px],
+        self.K = np.array([[f, -f * 1 / math.tan(theta_rad) if theta_rad != math.pi / 2 else 0, u0_px],
                            [0, f / (a * math.sin(theta_rad)), v0_px],
                            [0, 0, 1]])
         self.update_P()

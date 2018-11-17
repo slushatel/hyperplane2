@@ -7,38 +7,10 @@ from mpl_toolkits.mplot3d import axes3d
 import matplotlib.pyplot as plt
 from matplotlib import colors as mcolors
 import cv2
-
+import helpers.plot_helper as plot_helper
 
 colors = dict(mcolors.BASE_COLORS, **mcolors.CSS4_COLORS)
-
-
-def set_axes_equal(ax):
-    '''Make axes of 3D plot have equal scale so that spheres appear as spheres,
-    cubes as cubes, etc..  This is one possible solution to Matplotlib's
-    ax.set_aspect('equal') and ax.axis('equal') not working for 3D.
-
-    Input
-      ax: a matplotlib axis, e.g., as output from plt.gca().
-    '''
-
-    x_limits = ax.get_xlim3d()
-    y_limits = ax.get_ylim3d()
-    z_limits = ax.get_zlim3d()
-
-    x_range = abs(x_limits[1] - x_limits[0])
-    x_middle = np.mean(x_limits)
-    y_range = abs(y_limits[1] - y_limits[0])
-    y_middle = np.mean(y_limits)
-    z_range = abs(z_limits[1] - z_limits[0])
-    z_middle = np.mean(z_limits)
-
-    # The plot bounding box is a sphere in the sense of the infinity
-    # norm, hence I call half the max range the plot radius.
-    plot_radius = 0.5 * max([x_range, y_range, z_range])
-
-    ax.set_xlim3d([x_middle - plot_radius, x_middle + plot_radius])
-    ax.set_ylim3d([y_middle - plot_radius, y_middle + plot_radius])
-    ax.set_zlim3d([z_middle - plot_radius, z_middle + plot_radius])
+ax = plot_helper.prepare_plot()
 
 
 def rotation_matrix(axis, theta):
@@ -60,21 +32,16 @@ def rotation_matrix(axis, theta):
 axis = [1, 0, 0]
 theta = math.pi * 7 / 8
 
-
-def plot_plane(ax, point, normal, color):
-    x = np.linspace(point[0] - 20, point[0] + 20, 10)
-    y = np.linspace(point[1] - 20, point[1] + 20, 10)
-
-    X, Y = np.meshgrid(x, y)
-    Z = - (normal[0] * (X - point[0]) + normal[1] * (Y - point[1])) / normal[2] + point[2]
-    ax.plot_surface(X, Y, Z, alpha=0.2, color=color)
-
-
 # print(np.dot(rotation_matrix(axis, theta), v))
 ######################################
 
 c = camera.Camera()
-c.set_K_elements(0, 0)
+
+u, v = 5456, 3632
+camera_half_angle = math.pi * 38.2 / 180
+f = u / 2 / math.tan(camera_half_angle)
+
+c.set_K_elements(u / 2, v / 2, f=f)
 R = np.array(
     [[1, 0, 0],
      [0, 1, 0],
@@ -87,80 +54,61 @@ for i in range(0, 3):
     print("The length of all rotation vectors: " + str(len1))
 
 # c.set_R(R)
-c.set_R_euler_angles([math.pi / 8, 0, math.pi / 4])
+c.set_R_euler_angles([0, 0, 0])
 R = c.R
+
 cameraPosition = np.array([[0], [0], [50]])
 translationMatrix = -R.dot(cameraPosition)
 c.set_t(translationMatrix)
 
 print("camera center: " + str(-R.transpose().dot(translationMatrix)))
 
-point = c.world_to_image(np.array([[0., 0., 0.]]).T)
+startPoint = np.array([[5., 10., 0.]])
+point = c.world_to_image(startPoint.T)
 print("point's image coordinates: " + str(point))
 
 # camera point from opencv
-imagePoints = []
-imagePoints = cv2.projectPoints(np.array([[0., 0., 0.]]), R, translationMatrix, c.K, np.array([]))
+imagePoints, jacobian = cv2.projectPoints(startPoint, R, translationMatrix, c.K, np.array([]))
 print("point's image coordinates (using projectPoints): " + str(imagePoints))
 
-fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
-ax.set_aspect('equal')
-
 #  world coordinates
-pw = c.image_to_world(point, 1)
+pw = c.image_to_world(point, 0)
+# needs tuning
+# pw_alternative = c.R.transpose().dot(point) - c.R.transpose().dot(c.t)
+pw_corners = c.image_to_world(np.array([[0, 0], [0, v], [u, 0], [u, v]]).transpose(), 0)
+
+# Find homography
+# points1 = np.zeros((4, 2), dtype=np.float32)
+# points2 = np.zeros((4, 2), dtype=np.float32)
+points1 = np.array([[0, 0], [0, v], [u, 0], [u, v]])
+points2 = pw_corners[0:2].transpose()
+# h, mask = cv2.findHomography(points1, points2, cv2.RANSAC)
+h = cv2.getPerspectiveTransform(points1.astype(np.float32), points2.astype(np.float32))
+
+workDir = 'd:\work\windpropeller'
+pictureNumber = 76
+# Use homography
+# height, width, channels = im2.shape
+orig = cv2.imread(workDir + '\snapshots\snapshot000' + str(pictureNumber) + '.jpg')
+warp = cv2.warpPerspective(orig, h*100, (u, v))
+cv2.imwrite(workDir + '\warped\snapshot000' + str(pictureNumber) + '.jpg', warp)
+
+
 print("image to world coordinates (z = 0):" + str(pw))
-ax.scatter(pw[0], pw[1], pw[2], color='green')
-
-# c.plot_world_points(point, 'ro')
-
-
-x, y, z = [], [], []
-
-# for i in range(1, len(table)):
-x.append(0)
-y.append(0)
-z.append(0)
-
-x.append(cameraPosition[0, 0])
-y.append(cameraPosition[1, 0])
-z.append(cameraPosition[2, 0])
+plot_helper.plot_point(ax, pw, 'green')
 
 R *= 10
 
-# ax.quiver(cameraPosition[0, 0], cameraPosition[1, 0], cameraPosition[2, 0],
-#           R[0, 0], R[1, 0], R[2, 0], color=(0.5, 1, 0))  # green
-# ax.quiver(cameraPosition[0, 0], cameraPosition[1, 0], cameraPosition[2, 0],
-#           R[0, 1], R[1, 1], R[2, 1], color=(1, 0, 0.5))  # red
-# ax.quiver(cameraPosition[0, 0], cameraPosition[1, 0], cameraPosition[2, 0],
-#           R[0, 2], R[1, 2], R[2, 2], color=(0.5, 0, 1))  # violet
+plot_helper.plot_vector(ax, cameraPosition[:, 0], R[0, :], colors['green'])  # green
+plot_helper.plot_vector(ax, cameraPosition[:, 0], R[1, :], colors['red'])  # red
+plot_helper.plot_vector(ax, cameraPosition[:, 0], R[2, :], colors['blue'])  # violet
 
-ax.quiver(cameraPosition[0, 0], cameraPosition[1, 0], cameraPosition[2, 0],
-          R[0, 0], R[0, 1], R[0, 2], color=(0.5, 1, 0))  # green
-ax.quiver(cameraPosition[0, 0], cameraPosition[1, 0], cameraPosition[2, 0],
-          R[1, 0], R[1, 1], R[1, 2], color=(1, 0, 0.5))  # red
-ax.quiver(cameraPosition[0, 0], cameraPosition[1, 0], cameraPosition[2, 0],
-          R[2, 0], R[2, 1], R[2, 2], color=(0.5, 0, 1))  # violet
+plot_helper.plot_plane(ax, cameraPosition, R[0], colors['green'])
+plot_helper.plot_plane(ax, cameraPosition, R[1], colors['blue'])
 
-plot_plane(ax, cameraPosition, R[0], colors['green'])
-plot_plane(ax, cameraPosition, R[1], colors['blue'])
+plot_helper.plot_point(ax, [0, 0, 0], 'red')
+plot_helper.plot_point(ax, cameraPosition[:, 0], 'red')
 
-# ax.quiver(matrix[0, 3], matrix[1, 3], matrix[2, 3], matrix[0, 0], matrix[0, 1], matrix[0, 2])
-# ax.quiver(matrix[0, 3], matrix[1, 3], matrix[2, 3], matrix[1, 0], matrix[1, 1], matrix[1, 2])
-# ax.quiver(matrix[0, 3], matrix[1, 3], matrix[2, 3], matrix[2, 0], matrix[2, 1], matrix[2, 2])
-#
-# ax.quiver(matrix[0, 3], matrix[1, 3], matrix[2, 3], matrix[0, 0], matrix[1, 0], matrix[2, 0], color=(0.5, 1, 0)) #green
-# ax.quiver(matrix[0, 3], matrix[1, 3], matrix[2, 3], matrix[0, 1], matrix[1, 1], matrix[2, 1], color=(1, 0, 0.5)) #red
-# ax.quiver(matrix[0, 3], matrix[1, 3], matrix[2, 3], matrix[0, 2], matrix[1, 2], matrix[2, 2], color=(0.5, 0, 1)) #violet
-
-# x = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-# y = [5, 6, 2, 3, 13, 4, 1, 2, 4, 8]
-# z = [2, 3, 3, 3, 5, 7, 9, 11, 9, 10]
-ax.scatter(x, y, z, c='r', marker='o')
-ax.set_xlabel('X Label')
-ax.set_ylabel('Y Label')
-ax.set_zlabel('Z Label')
-
-set_axes_equal(ax)
+plot_helper.set_axes_equal(ax)
 
 plt.show()
