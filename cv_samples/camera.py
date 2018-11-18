@@ -761,6 +761,24 @@ class Camera:
         world_xy = p2e(np.linalg.inv(tmpP).dot(e2p(image_undistorted)))
         return np.vstack((world_xy, z * np.ones(image_px.shape[1])))
 
+    def image_to_world_y(self, image_px, y):
+        """
+        Project image points with defined world z to world coordinates.
+
+        :param image_px: image points
+        :type image_px: numpy.ndarray, shape=(2 or 3, n)
+        :param y: world y coordinate of the projected image points
+        :type y: float
+        :return: n projective world coordinates
+        :rtype: numpy.ndarray, shape=(3, n)
+        """
+        if image_px.shape[0] == 3:
+            image_px = p2e(image_px)
+        image_undistorted = self.undistort(image_px)
+        tmpP = np.hstack((self.P[:, [0]], self.P[:, 1, np.newaxis] * y + self.P[:, 3, np.newaxis], self.P[:, [2]]))
+        world_xz = p2e(np.linalg.inv(tmpP).dot(e2p(image_undistorted)))
+        return np.vstack((world_xz[0], y * np.ones(image_px.shape[1]), world_xz[1]))
+
     def get_view_matrix(self, alpha):
         """
         Returns camera matrix for handling image and coordinates distortion and undistortion. Based on alpha,

@@ -5,7 +5,7 @@ import numpy as np
 MAX_FEATURES = 500
 GOOD_MATCH_PERCENT = 0.15
 
-workDir = 'c:\work\windpropeller'
+workDir = 'd:\work\windpropeller'
 
 
 def alignImages(pictureNumber, im1, im2):
@@ -36,8 +36,8 @@ def alignImages(pictureNumber, im1, im2):
     matches.sort(key=lambda x: x.distance, reverse=False)
 
     # Remove not so good matches
-    # numGoodMatches = int(len(matches) * GOOD_MATCH_PERCENT)
-    numGoodMatches =5
+    numGoodMatches = int(len(matches) * GOOD_MATCH_PERCENT)
+    # numGoodMatches =5
     matches = matches[:numGoodMatches]
 
     # Draw top matches
@@ -53,20 +53,20 @@ def alignImages(pictureNumber, im1, im2):
         points2[i, :] = keypoints2[match.trainIdx].pt
 
     # Find homography
-    # h, mask = cv2.findHomography(points1, points2, cv2.RANSAC)
+    h, mask = cv2.findHomography(points1, points2, cv2.RANSAC)
     # cv2.findHomography(points1, points2, cv2.RANSAC)
 
     # Use homography
     height, width, channels = im2.shape
-    # im1Reg = cv2.warpPerspective(im1, h, (width, height))
+    im1Reg = cv2.warpPerspective(im1, h, (width, height))
 
-    # return im1Reg, h
+    return im1Reg, h
 
 # img = cv2.imread(workDir + '\snapshots\snapshot000' + str(pictureNumber) + '.jpg', cv2.IMREAD_UNCHANGED)
 
 if __name__ == '__main__':
 
-    pictureNumbersMin = 76
+    pictureNumbersMin = 97
     pictureNumbersMax = 98
     i = 0
     n = pictureNumbersMax - pictureNumbersMin + 1
@@ -92,13 +92,13 @@ if __name__ == '__main__':
     print("Aligning images ...")
     # Registered image will be resotred in imReg.
     # The estimated homography will be stored in h.
-    # imReg, h = alignImages(97, im, imReference)
-    alignImages(97, im, imReference)
+    imReg, h = alignImages(97, im, imReference)
+    # alignImages(97, im, imReference)
 
     # Write aligned image to disk.
     outFilename = workDir + "/aligned.jpg"
     print("Saving aligned image : ", outFilename);
-    # cv2.imwrite(outFilename, imReg)
+    cv2.imwrite(outFilename, imReg)
 
     # Print estimated homography
     # print("Estimated homography : \n", h)
