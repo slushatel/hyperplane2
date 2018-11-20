@@ -3,6 +3,8 @@ from mpl_toolkits.mplot3d import axes3d
 import matplotlib.pyplot as plt
 from matplotlib import colors as mcolors
 
+colors = dict(mcolors.BASE_COLORS, **mcolors.CSS4_COLORS)
+
 
 def plot_point(ax, point, color):
     ax.scatter(point[0], point[1], point[2], color=color)
@@ -16,7 +18,6 @@ def prepare_plot():
     ax.set_xlabel('X Label')
     ax.set_ylabel('Y Label')
     ax.set_zlabel('Z Label')
-
 
     return ax
 
@@ -64,3 +65,10 @@ def plot_plane(ax, point, normal, color):
 
 def plot_vector(ax, center, vector, color):
     ax.quiver(center[0], center[1], center[2], vector[0], vector[1], vector[2], color=color)
+
+
+def plot_camera(ax, cameraPosition, R, r_multiplier):
+    plot_point(ax, cameraPosition, 'red')
+    plot_vector(ax, cameraPosition, R[0] * r_multiplier, colors['green'])
+    plot_vector(ax, cameraPosition, R[1] * r_multiplier, colors['red'])
+    plot_vector(ax, cameraPosition, R[2] * r_multiplier, colors['blue'])

@@ -717,7 +717,6 @@ class Camera:
             return e2p(distorted_image_coords)
         if world.shape[0] == 3:
             world = e2p(world)
-        # camera_coords = self.R.dot(self.t.dot(world))
         camera_coords = np.hstack((self.R, self.t)).dot(world)
         if self.calibration_type == 'bouguet':
             xy = camera_coords[0:2, :]
@@ -761,23 +760,37 @@ class Camera:
         world_xy = p2e(np.linalg.inv(tmpP).dot(e2p(image_undistorted)))
         return np.vstack((world_xy, z * np.ones(image_px.shape[1])))
 
-    def image_to_world_y(self, image_px, y):
+    def image_to_world_plane(self, image_px, plane, ax = 0):
         """
         Project image points with defined world z to world coordinates.
 
         :param image_px: image points
         :type image_px: numpy.ndarray, shape=(2 or 3, n)
-        :param y: world y coordinate of the projected image points
-        :type y: float
+        :param z: world z coordinate of the projected image points
+        :type z: float
         :return: n projective world coordinates
         :rtype: numpy.ndarray, shape=(3, n)
         """
         if image_px.shape[0] == 3:
             image_px = p2e(image_px)
         image_undistorted = self.undistort(image_px)
-        tmpP = np.hstack((self.P[:, [0]], self.P[:, 1, np.newaxis] * y + self.P[:, 3, np.newaxis], self.P[:, [2]]))
-        world_xz = p2e(np.linalg.inv(tmpP).dot(e2p(image_undistorted)))
-        return np.vstack((world_xz[0], y * np.ones(image_px.shape[1]), world_xz[1]))
+
+        a, b, c, d = plane
+        tmpP = np.vstack((self.P, np.array([0, 0, 0, 1])))
+        P_inv = np.linalg.inv(tmpP)
+        world_xyz = P_inv[0:3, :].dot(e2p(e2p(image_undistorted)))
+
+        if ax != 0:
+            ax.scatter(world_xyz[0], world_xyz[1], world_xyz[2], color='green')
+
+
+        cameraPosition = -self.R.transpose().dot(self.t)
+        # intersection of lines and the plane
+        t1 = plane.dot(e2p(cameraPosition))
+        t2 = plane[0:3].dot(world_xyz - cameraPosition)
+        t = t1/t2
+        points = -t*(world_xyz - cameraPosition) + cameraPosition
+        return points
 
     def get_view_matrix(self, alpha):
         """
