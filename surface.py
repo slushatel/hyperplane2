@@ -37,15 +37,31 @@ for i in range(1, len(table)):
     matrix = np.matrix(matrix_str).reshape(-1, 4)
     print(matrix)
     matrix_arr = np.asarray(matrix)
-    R = matrix_arr[0:3, 0:3]
-    T = matrix_arr[0:3, 3:4]
-    cameraPosition = -R.transpose().dot(T)
-    plot_helper.plot_camera(ax, cameraPosition, R, 5)
+    matrix_arr = np.vstack((matrix_arr[0], matrix_arr[2], matrix_arr[1], matrix_arr[3]))
+    # # matrix_arr = np.array([[1, 0, 0], [0, -1, 0], [0, 0, 1]]).dot(matrix_arr)
+    # print("matrix_arr")
+    # print(matrix_arr)
+    # basis = np.array([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
+    # matrix_arr = basis.dot(matrix_arr)
 
-    cameraPosition = np.array([[1, 0, 0], [0, -1, 0], [0, 0, 1]]).dot(cameraPosition)
-    R = matrix_helper.getRotationMatrix(-math.pi / 2, 0, 0).dot(R)
+    # R = matrix_arr[0:3, 0:3]
+    # T = matrix_arr[0:3, 3:4]
+    # cameraPosition = -R.transpose().dot(T)
+
+    R = matrix_arr[0:3, 0:3]
+    cameraPosition = matrix_arr[0:3, 3:4]
     T = -R.dot(cameraPosition)
     plot_helper.plot_camera(ax, cameraPosition, R, 5)
+
+    # R = R.transpose()
+    # cameraPosition = T
+    # T = -R.dot(cameraPosition)
+    # plot_helper.plot_camera(ax, cameraPosition, R, 5)
+
+    # cameraPosition = np.array([[1, 0, 0], [0, -1, 0], [0, 0, 1]]).dot(cameraPosition)
+    # R = matrix_helper.getRotationMatrix(-math.pi / 2, 0, 0).dot(R)
+    # T = -R.dot(cameraPosition)
+    # plot_helper.plot_camera(ax, cameraPosition, R, 5)
 
     logging.info("cameraPosition: " + str(cameraPosition))
     logging.info("R:" + str(R))
@@ -60,7 +76,7 @@ for i in range(1, len(table)):
     c.set_t(T)
 
     warp, img_corners = image_helper.apply_homography(c, u, v, workDir=workDir,
-                                                      pictureFilename=fileName, scale=40, plane=np.array([0, 0, 1, -5]))
+                                                      pictureFilename=fileName, scale=50, plane=np.array([0, 0, 1, 0]))
     left_top_y, left_top_x = img_corners[0, 0].astype(int), img_corners[1, 0].astype(int)
     img_dictionary[fileName] = {'img': warp, 'left_top_x': left_top_x, 'left_top_y': left_top_y}
     img_params['x_min'] = min(img_params['x_min'], left_top_x)
@@ -68,13 +84,14 @@ for i in range(1, len(table)):
     img_params['x_max'] = max(img_params['x_max'], left_top_x + warp.shape[0])
     img_params['y_max'] = max(img_params['y_max'], left_top_y + warp.shape[1])
 
-background = np.zeros((img_params['x_max'] - img_params['x_min'], img_params['y_max'] - img_params['y_min'], 3), np.uint8)
+background = np.zeros((img_params['x_max'] - img_params['x_min'], img_params['y_max'] - img_params['y_min'], 3),
+                      np.uint8)
 for key in img_dictionary:
     warp = img_dictionary[key]['img']
     left_top_x = img_dictionary[key]['left_top_x'] - img_params['x_min']
     left_top_y = img_dictionary[key]['left_top_y'] - img_params['y_min']
 
-    alpha_s = warp[:, :, 3] / 255.0
+    alpha_s = warp[:, :, 3] / 255.0 - 0.5
     alpha_l = 1.0 - alpha_s
     for c in range(0, 3):
         background[left_top_x:left_top_x + warp.shape[0], left_top_y:left_top_y + warp.shape[1], c] = \
