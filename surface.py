@@ -27,6 +27,10 @@ doc = ODSReader(u'metadata-v1_manual.ods', clonespannedcolumns=True)
 table = doc.getSheet(u'1-A-PressureSide')
 print(table)
 
+# swap images 2nd and 3rd
+# a, b = 2, 3
+# table[a][0], table[b][0] = table[b][0], table[a][0]
+
 img_dictionary = {}
 img_params = {'x_min': 999999, 'y_min': 999999, 'x_max': -999999, 'y_max': -999999}
 
@@ -35,7 +39,6 @@ for i in range(1, len(table)):
     print(fileName)
     matrix_str = table[i][1]
     matrix = np.matrix(matrix_str).reshape(-1, 4)
-    print(matrix)
     matrix_arr = np.asarray(matrix)
     matrix_arr = np.vstack((matrix_arr[0], matrix_arr[2], matrix_arr[1], matrix_arr[3]))
     # # matrix_arr = np.array([[1, 0, 0], [0, -1, 0], [0, 0, 1]]).dot(matrix_arr)
@@ -49,9 +52,13 @@ for i in range(1, len(table)):
     # cameraPosition = -R.transpose().dot(T)
 
     R = matrix_arr[0:3, 0:3]
+    R = np.array([[-1, 0, 0], [0, -1, 0], [0, 0, 1]]).dot(R)
     cameraPosition = matrix_arr[0:3, 3:4]
     T = -R.dot(cameraPosition)
     plot_helper.plot_camera(ax, cameraPosition, R, 5)
+    print("cameraPosition: " + str(cameraPosition))
+    print("R:" + str(R))
+    print("T:" + str(T))
 
     # R = R.transpose()
     # cameraPosition = T
@@ -63,10 +70,6 @@ for i in range(1, len(table)):
     # T = -R.dot(cameraPosition)
     # plot_helper.plot_camera(ax, cameraPosition, R, 5)
 
-    logging.info("cameraPosition: " + str(cameraPosition))
-    logging.info("R:" + str(R))
-    logging.info("T:" + str(T))
-
     u, v = 5456, 3632
     camera_half_angle = (38.2 / 2) * math.pi / 180
     f = u / 2 / math.tan(camera_half_angle)
@@ -76,7 +79,7 @@ for i in range(1, len(table)):
     c.set_t(T)
 
     warp, img_corners = image_helper.apply_homography(c, u, v, workDir=workDir,
-                                                      pictureFilename=fileName, scale=50, plane=np.array([0, 0, 1, 0]))
+                                                      pictureFilename=fileName, scale=200, plane=np.array([0, 0, 1, 0]))
     left_top_y, left_top_x = img_corners[0, 0].astype(int), img_corners[1, 0].astype(int)
     img_dictionary[fileName] = {'img': warp, 'left_top_x': left_top_x, 'left_top_y': left_top_y}
     img_params['x_min'] = min(img_params['x_min'], left_top_x)
@@ -87,6 +90,9 @@ for i in range(1, len(table)):
 background = np.zeros((img_params['x_max'] - img_params['x_min'], img_params['y_max'] - img_params['y_min'], 3),
                       np.uint8)
 for key in img_dictionary:
+    # if key == "snapshot00077.jpg":
+    #     continue
+
     warp = img_dictionary[key]['img']
     left_top_x = img_dictionary[key]['left_top_x'] - img_params['x_min']
     left_top_y = img_dictionary[key]['left_top_y'] - img_params['y_min']
@@ -97,6 +103,10 @@ for key in img_dictionary:
         background[left_top_x:left_top_x + warp.shape[0], left_top_y:left_top_y + warp.shape[1], c] = \
             warp[:, :, c] * alpha_s + \
             background[left_top_x:left_top_x + warp.shape[0], left_top_y:left_top_y + warp.shape[1], c] * alpha_l
+
+# stitcher = cv2.createStitcher(False)
+# pano = stitcher.stitch([img_dictionary["snapshot00097.jpg"]['img'], img_dictionary["snapshot00098.jpg"]['img']])
+# cv2.imwrite(workDir + "/pano.png", pano[1])
 
 cv2.imwrite(workDir + "/background.png", background)
 plot_helper.set_axes_equal(ax)
